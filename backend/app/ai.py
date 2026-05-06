@@ -1,20 +1,25 @@
-import os
-from dotenv import load_dotenv
-import google.generativeai as genai
+import vertexai
 
-load_dotenv()
+from vertexai.generative_models import GenerativeModel
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+vertexai.init(
+    project="ai-infrastructure-assistant",
+    location="europe-central2",
+)
 
-model = genai.GenerativeModel("gemini-2.5-flash")
+model = GenerativeModel("gemini-2.5-flash")
 
 
-def generate_infra(prompt: str, infra_type: str):
+def generate_infra(
+    prompt: str,
+    infra_type: str,
+    cloud: str
+):
 
     full_prompt = f"""
 You are a senior DevOps engineer.
 
-Generate ONLY valid {infra_type} configuration.
+Generate ONLY valid {infra_type} configuration for {cloud}.
 
 Rules:
 - production-ready

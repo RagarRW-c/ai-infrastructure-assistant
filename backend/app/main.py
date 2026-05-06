@@ -18,6 +18,7 @@ app.add_middleware(
 class PromptRequest(BaseModel):
     prompt: str
     type: str
+    cloud: str
 
 
 @app.post("/generate")
@@ -25,7 +26,7 @@ def generate(req: PromptRequest):
 
     try:
 
-        result = generate_infra(req.prompt, req.type)
+        result = generate_infra(req.prompt, req.type, req.cloud)
 
         return {
             "result": result

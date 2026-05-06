@@ -2,5 +2,5 @@ fastapi
 uvicorn[standard]
 openai
 python-dotenv
-google-generativeai
-
+google-cloud-aiplatform
+vertexai
