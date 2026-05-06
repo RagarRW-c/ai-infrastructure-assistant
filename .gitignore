@@ -10,6 +10,7 @@ frontend/.next/
 # Env
 .env
 .env.local
+.env.production
 
 # OS
 .DS_Store
@@ -20,3 +21,7 @@ frontend/.next/
 # Terraform
 *.tfstate
 *.tfstate.backup
+.terraform/
+
+# Logs
+*.log

@@ -11,6 +11,10 @@ export default function Home() {
 
   const [type, setType] = useState("kubernetes");
 
+  const [cloud, setCloud] = useState("gcp");
+
+  console.log("ENV:", process.env.NEXT_PUBLIC_API_URL)
+
   async function generate() {
 
     setLoading(true);
@@ -18,7 +22,7 @@ export default function Home() {
     try {
 
       const response = await fetch(
-        "https://ai-infra-backend-41844796013.europe-central2.run.app/generate",
+        `${process.env.NEXT_PUBLIC_API_URL}/generate`,
         {
           method: "POST",
           headers: {
@@ -27,6 +31,7 @@ export default function Home() {
           body: JSON.stringify({
             prompt,
             type,
+            cloud,
           }),
         }
       );
@@ -89,6 +94,44 @@ export default function Home() {
 
       </div>
 
+      <div className="flex gap-4 mb-6">
+
+  <button
+    onClick={() => setCloud("aws")}
+    className={`px-4 py-2 rounded ${
+      cloud === "aws"
+        ? "bg-orange-600"
+        : "bg-gray-700"
+    }`}
+  >
+    AWS
+  </button>
+
+  <button
+    onClick={() => setCloud("gcp")}
+    className={`px-4 py-2 rounded ${
+      cloud === "gcp"
+        ? "bg-blue-600"
+        : "bg-gray-700"
+    }`}
+  >
+    GCP
+  </button>
+
+  <button
+    onClick={() => setCloud("azure")}
+    className={`px-4 py-2 rounded ${
+      cloud === "azure"
+        ? "bg-cyan-600"
+        : "bg-gray-700"
+    }`}
+  >
+    Azure
+  </button>
+
+</div>
+
+
       <textarea
         className="w-full h-40 p-4 rounded bg-white text-black border border-gray-400"
         placeholder="Create kubernetes deployment for nginx"
@@ -143,7 +186,13 @@ export default function Home() {
 
         <Editor
           height="600px"
-          defaultLanguage="yaml"
+          language={
+            type === "terraform"
+            ? "hcl"
+            : type === "dockerfile"
+            ? "dockerfile"
+            : "yaml"
+          }
           theme="vs-dark"
           value={result}
           options={{
