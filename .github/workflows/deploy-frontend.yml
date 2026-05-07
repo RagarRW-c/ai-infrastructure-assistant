@@ -1,11 +1,13 @@
-name: Deploy Frontend
+name: Deploy Backend
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'frontend/**'
+      - 'backend/**'
+
+  workflow_dispatch:
 
 jobs:
   deploy:
