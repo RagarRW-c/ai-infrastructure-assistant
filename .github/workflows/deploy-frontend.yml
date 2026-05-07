@@ -1,0 +1,37 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/41844796013/locations/global/workloadIdentityPools/github-pool-3/providers/github-provider
+          service_account: github-deployer@ai-infrastructure-assistant.iam.gserviceaccount.com
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy Frontend
+        run: |
+          gcloud run deploy ai-infra-frontend \
+            --source ./frontend \
+            --region europe-central2 \
+            --allow-unauthenticated \
+            --project ai-infrastructure-assistant
