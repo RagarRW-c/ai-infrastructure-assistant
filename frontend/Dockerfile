@@ -2,9 +2,12 @@ FROM node:22-alpine
 
 WORKDIR /app
 
+ARG NEXT_PUBLIC_API_URL=https://ai-infra-backend-41844796013.europe-central2.run.app
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 COPY package*.json ./
 
-RUN npm install
+RUN npm ci
 
 COPY . .
 
