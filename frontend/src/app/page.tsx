@@ -6,7 +6,8 @@ import Editor from "@monaco-editor/react";
 type InfraType = "kubernetes" | "terraform" | "dockerfile";
 type CloudProvider = "aws" | "gcp" | "azure";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const DEFAULT_API_BASE_URL = "https://ai-infra-backend-41844796013.europe-central2.run.app";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE_URL;
 const MAX_PROMPT_LENGTH = 4000;
 
 const infraOptions: Array<{ value: InfraType; label: string; language: string }> = [

@@ -36,4 +36,6 @@ jobs:
             --source ./frontend \
             --region europe-central2 \
             --allow-unauthenticated \
+            --set-build-env-vars NEXT_PUBLIC_API_URL=https://ai-infra-backend-41844796013.europe-central2.run.app \
+            --set-env-vars NEXT_PUBLIC_API_URL=https://ai-infra-backend-41844796013.europe-central2.run.app \
             --project ai-infrastructure-assistant

@@ -4,13 +4,13 @@ Next.js UI for AI Infrastructure Assistant. The app sends prompts to the FastAPI
 
 ## Environment
 
-Set the backend URL before running or building:
+Set the backend URL before running or building locally:
 
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
 
-`NEXT_PUBLIC_API_URL` is visible to the browser and is inlined at build time.
+`NEXT_PUBLIC_API_URL` is visible to the browser and is inlined at build time. If it is not set, the app falls back to the deployed backend at `https://ai-infra-backend-41844796013.europe-central2.run.app`.
 
 ## Development
 
