@@ -9,6 +9,7 @@ type CloudProvider = "aws" | "gcp" | "azure";
 const DEFAULT_API_BASE_URL = "https://ai-infra-backend-41844796013.europe-central2.run.app";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE_URL;
 const MAX_PROMPT_LENGTH = 4000;
+const SHOW_BACKEND_INFO = process.env.NODE_ENV === "development";
 
 const infraOptions: Array<{ value: InfraType; label: string; language: string }> = [
   { value: "kubernetes", label: "Kubernetes", language: "yaml" },
@@ -161,7 +162,7 @@ export default function Home() {
           />
           <div className="mt-2 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-400">
             <span>{prompt.length}/{MAX_PROMPT_LENGTH} characters</span>
-            <span>Backend: {API_BASE_URL}</span>
+            {SHOW_BACKEND_INFO ? <span>Backend: {API_BASE_URL}</span> : null}
           </div>
 
           {error ? (
