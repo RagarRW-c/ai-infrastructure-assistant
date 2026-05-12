@@ -1,37 +1,50 @@
 import vertexai
-
 from vertexai.generative_models import GenerativeModel
 
-vertexai.init(
-    project="ai-infrastructure-assistant",
-    location="europe-central2",
-)
+from app.config import get_settings
+from app.prompts import CloudProvider, InfraType, build_prompt
 
-model = GenerativeModel("gemini-2.5-flash")
+_model: GenerativeModel | None = None
 
 
-def generate_infra(
-    prompt: str,
-    infra_type: str,
-    cloud: str
-):
+class InfrastructureGenerationError(RuntimeError):
+    pass
 
-    full_prompt = f"""
-You are a senior DevOps engineer.
 
-Generate ONLY valid {infra_type} configuration for {cloud}.
+def get_model() -> GenerativeModel:
+    global _model
 
-Rules:
-- production-ready
-- secure defaults
-- no markdown
-- no explanations
-- return only code
+    if _model is None:
+        settings = get_settings()
+        vertexai.init(
+            project=settings.gcp_project,
+            location=settings.gcp_location,
+        )
+        _model = GenerativeModel(settings.vertex_model)
 
-User request:
-{prompt}
-"""
+    return _model
 
-    response = model.generate_content(full_prompt)
 
-    return response.text
+def clean_generated_code(text: str) -> str:
+    stripped = text.strip()
+
+    if stripped.startswith("```"):
+        lines = stripped.splitlines()
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        stripped = "\n".join(lines).strip()
+
+    return stripped
+
+
+def generate_infra(prompt: str, infra_type: InfraType, cloud: CloudProvider) -> str:
+    full_prompt = build_prompt(prompt, infra_type, cloud)
+    response = get_model().generate_content(full_prompt)
+    text = getattr(response, "text", "").strip()
+
+    if not text:
+        raise InfrastructureGenerationError("Model returned an empty response.")
+
+    return clean_generated_code(text)
