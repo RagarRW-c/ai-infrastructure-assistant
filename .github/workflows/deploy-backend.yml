@@ -36,4 +36,5 @@ jobs:
             --source ./backend \
             --region europe-central2 \
             --allow-unauthenticated \
+            --set-env-vars CORS_ORIGINS=https://ai-infra-frontend-41844796013.europe-central2.run.app \
             --project ai-infrastructure-assistant
