@@ -12,6 +12,7 @@ AI Infrastructure Assistant is a small full-stack app for generating infrastruct
 - Generated output validation for Kubernetes YAML, Terraform, and Dockerfile snippets.
 - Generate endpoint rate limiting to reduce accidental or abusive model usage.
 - Backend tests with FastAPI `TestClient` and mocked generation.
+- GitHub Actions CI for backend tests/compile checks and frontend lint/build checks.
 - Local Docker Compose setup.
 
 ## Project structure
@@ -125,6 +126,8 @@ Response body:
 Request validation errors return HTTP `422`. Rate-limited clients receive HTTP `429` with a `Retry-After` header. Model or backend failures return proper non-2xx HTTP errors instead of embedding error text in the `result` field.
 
 ## Testing and checks
+
+The repository includes a GitHub Actions CI workflow that runs backend tests, Python compilation checks, frontend linting, and frontend production builds on pull requests and pushes to `main`.
 
 Backend:
 
