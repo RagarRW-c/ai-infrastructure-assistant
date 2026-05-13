@@ -5,6 +5,12 @@ import Editor from "@monaco-editor/react";
 
 type InfraType = "kubernetes" | "terraform" | "dockerfile";
 type CloudProvider = "aws" | "gcp" | "azure";
+type ValidationStatus = "passed" | "warning" | "failed";
+
+type ValidationResult = {
+  status: ValidationStatus;
+  messages: string[];
+};
 
 const DEFAULT_API_BASE_URL = "https://ai-infra-backend-41844796013.europe-central2.run.app";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE_URL;
@@ -29,6 +35,21 @@ const placeholders: Record<InfraType, string> = {
   dockerfile: "Create a secure multi-stage Dockerfile for a Next.js application",
 };
 
+const validationStyles: Record<ValidationStatus, { label: string; className: string }> = {
+  passed: {
+    label: "Validation passed",
+    className: "border-green-600 bg-green-950 text-green-100",
+  },
+  warning: {
+    label: "Validation warnings",
+    className: "border-yellow-500 bg-yellow-950 text-yellow-100",
+  },
+  failed: {
+    label: "Validation failed",
+    className: "border-red-500 bg-red-950 text-red-100",
+  },
+};
+
 function getErrorMessage(payload: unknown, fallback: string) {
   if (payload && typeof payload === "object" && "detail" in payload) {
     const detail = (payload as { detail?: unknown }).detail;
@@ -40,10 +61,26 @@ function getErrorMessage(payload: unknown, fallback: string) {
   return fallback;
 }
 
+function isValidationResult(value: unknown): value is ValidationResult {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as { status?: unknown; messages?: unknown };
+  return (
+    (candidate.status === "passed" ||
+      candidate.status === "warning" ||
+      candidate.status === "failed") &&
+    Array.isArray(candidate.messages) &&
+    candidate.messages.every((message) => typeof message === "string")
+  );
+}
+
 export default function Home() {
   const [prompt, setPrompt] = useState("");
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
+  const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [type, setType] = useState<InfraType>("kubernetes");
   const [cloud, setCloud] = useState<CloudProvider>("gcp");
@@ -63,6 +100,7 @@ export default function Home() {
 
     setLoading(true);
     setError("");
+    setValidation(null);
 
     try {
       const response = await fetch(`${API_BASE_URL}/generate`, {
@@ -87,7 +125,12 @@ export default function Home() {
         throw new Error("Backend returned an unexpected response.");
       }
 
-      setResult(String((data as { result: unknown }).result));
+      const payload = data as { result: unknown; validation?: unknown };
+      setResult(String(payload.result));
+
+      if (isValidationResult(payload.validation)) {
+        setValidation(payload.validation);
+      }
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "Generation failed.";
       setError(message);
@@ -180,6 +223,17 @@ export default function Home() {
             {loading ? "Generating..." : "Generate"}
           </button>
         </div>
+
+        {validation ? (
+          <div className={`rounded-2xl border p-4 ${validationStyles[validation.status].className}`}>
+            <h2 className="font-semibold">{validationStyles[validation.status].label}</h2>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+              {validation.messages.map((message, index) => (
+                <li key={`${validation.status}-${index}`}>{message}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <div className="overflow-hidden rounded-2xl border border-gray-800 bg-gray-950">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-800 p-3">

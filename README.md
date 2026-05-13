@@ -9,6 +9,7 @@ AI Infrastructure Assistant is a small full-stack app for generating infrastruct
 - Backend request validation with whitelisted `type` and `cloud` values.
 - Configurable GCP project, region, Vertex model, CORS origins, and prompt length via environment variables.
 - `/health` endpoint for Cloud Run, Kubernetes, or load-balancer probes.
+- Generated output validation for Kubernetes YAML, Terraform, and Dockerfile snippets.
 - Backend tests with FastAPI `TestClient` and mocked generation.
 - Local Docker Compose setup.
 
@@ -106,11 +107,19 @@ Response body:
 
 ```json
 {
-  "result": "apiVersion: apps/v1\n..."
+  "result": "apiVersion: apps/v1\n...",
+  "validation": {
+    "status": "warning",
+    "messages": [
+      "Container web is missing resource requests or limits."
+    ]
+  }
 }
 ```
 
-Validation errors return HTTP `422`. Model or backend failures return proper non-2xx HTTP errors instead of embedding error text in the `result` field.
+`validation.status` can be `passed`, `warning`, or `failed`. Backend validation performs built-in checks for Kubernetes YAML structure and common container risks, Terraform syntax/secret heuristics plus `terraform fmt -check` when Terraform is installed, and Dockerfile structure/best-practice checks plus `hadolint` when available.
+
+Request validation errors return HTTP `422`. Model or backend failures return proper non-2xx HTTP errors instead of embedding error text in the `result` field.
 
 ## Testing and checks
 
@@ -135,6 +144,6 @@ npm run build
 - The GitHub Actions frontend deployment sets `NEXT_PUBLIC_API_URL` during the Cloud Run source build, because Next.js inlines `NEXT_PUBLIC_` values into the browser bundle.
 - The GitHub Actions backend deployment sets `CORS_ORIGINS` to `https://ai-infra-frontend-41844796013.europe-central2.run.app` so the deployed frontend can call the API.
 - Set exact `CORS_ORIGINS`; avoid `*` for authenticated deployments.
-- Validate generated infrastructure code with your normal tools before deployment, for example `kubectl --dry-run`, `terraform fmt`, `terraform validate`, and Dockerfile linters.
+- Treat built-in validation as a first-pass safety check; still validate generated infrastructure code with your normal tools before deployment, for example `kubectl --dry-run`, `terraform validate`, `tflint`, `checkov`, and Dockerfile linters.
 - Do not hardcode secrets in prompts or generated code.
 - Ensure Vertex AI credentials are provided through workload identity, service account credentials, or the platform-native identity mechanism.

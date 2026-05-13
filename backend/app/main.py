@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from app.ai import InfrastructureGenerationError, generate_infra
 from app.config import get_settings
 from app.prompts import CloudProvider, InfraType
+from app.validation import ValidationResult, validate_generated_output
 
 settings = get_settings()
 
@@ -32,6 +33,7 @@ class PromptRequest(BaseModel):
 
 class GenerateResponse(BaseModel):
     result: str
+    validation: ValidationResult
 
 
 class HealthResponse(BaseModel):
@@ -53,6 +55,7 @@ def health() -> HealthResponse:
 def generate(req: PromptRequest) -> GenerateResponse:
     try:
         result = generate_infra(req.prompt, req.type, req.cloud)
+        validation = validate_generated_output(result, req.type)
     except InfrastructureGenerationError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:
@@ -61,4 +64,4 @@ def generate(req: PromptRequest) -> GenerateResponse:
             detail="Infrastructure generation failed. Check backend logs for details.",
         ) from exc
 
-    return GenerateResponse(result=result)
+    return GenerateResponse(result=result, validation=validation)
