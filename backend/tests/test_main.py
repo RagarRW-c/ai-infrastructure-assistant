@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app import main
+from app.rate_limit import RateLimiter
 
 client = TestClient(main.app)
 
@@ -87,6 +88,47 @@ def test_generate_returns_failed_validation(monkeypatch):
         "status": "failed",
         "messages": ["Document 1 is missing apiVersion."],
     }
+
+
+def test_generate_rate_limit_returns_429(monkeypatch):
+    def fake_generate_infra(prompt: str, infra_type: str, cloud: str) -> str:
+        return "apiVersion: v1\nkind: Service\nmetadata:\n  name: nginx"
+
+    monkeypatch.setattr(main, "generate_infra", fake_generate_infra)
+    monkeypatch.setattr(
+        main,
+        "generate_rate_limiter",
+        RateLimiter(max_requests=1, window_seconds=60),
+    )
+
+    request_payload = {
+        "prompt": "Create nginx deployment",
+        "type": "kubernetes",
+        "cloud": "gcp",
+    }
+    headers = {"X-Forwarded-For": "203.0.113.10"}
+
+    first_response = client.post("/generate", json=request_payload, headers=headers)
+    second_response = client.post("/generate", json=request_payload, headers=headers)
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 429
+    assert second_response.json() == {
+        "detail": "Rate limit exceeded. Please try again later."
+    }
+    assert int(second_response.headers["retry-after"]) >= 1
+
+
+def test_health_is_not_rate_limited(monkeypatch):
+    monkeypatch.setattr(
+        main,
+        "generate_rate_limiter",
+        RateLimiter(max_requests=0, window_seconds=60),
+    )
+
+    response = client.get("/health", headers={"X-Forwarded-For": "203.0.113.11"})
+
+    assert response.status_code == 200
 
 
 def test_generate_rejects_unsupported_type():

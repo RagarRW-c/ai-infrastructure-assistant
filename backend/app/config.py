@@ -18,6 +18,8 @@ class Settings(BaseModel):
         ]
     )
     max_prompt_length: int = Field(default=4000, ge=100, le=20000)
+    rate_limit_requests: int = Field(default=10, ge=0, le=1000)
+    rate_limit_window_seconds: int = Field(default=60, ge=0, le=3600)
 
 
 def _split_csv(value: str | None, default: list[str]) -> list[str]:
@@ -42,4 +44,6 @@ def get_settings() -> Settings:
             ],
         ),
         max_prompt_length=int(os.getenv("MAX_PROMPT_LENGTH", "4000")),
+        rate_limit_requests=int(os.getenv("RATE_LIMIT_REQUESTS", "10")),
+        rate_limit_window_seconds=int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60")),
     )

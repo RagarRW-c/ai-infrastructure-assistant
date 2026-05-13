@@ -60,3 +60,13 @@ def test_dockerfile_validator_warns_about_root_and_latest():
     assert result.status == "warning"
     assert "Base image is unpinned or uses latest tag: FROM python:latest" in result.messages
     assert "Dockerfile final USER is root." in result.messages
+
+
+def test_rate_limiter_expires_requests():
+    from app.rate_limit import RateLimiter
+
+    limiter = RateLimiter(max_requests=1, window_seconds=10)
+
+    assert limiter.check("client", now=100.0) == (True, 0)
+    assert limiter.check("client", now=101.0) == (False, 10)
+    assert limiter.check("client", now=111.0) == (True, 0)

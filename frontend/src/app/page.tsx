@@ -118,7 +118,11 @@ export default function Home() {
       const data: unknown = await response.json();
 
       if (!response.ok) {
-        throw new Error(getErrorMessage(data, "Generation failed."));
+        const fallbackMessage =
+          response.status === 429
+            ? "Too many requests. Please wait a moment and try again."
+            : "Generation failed.";
+        throw new Error(getErrorMessage(data, fallbackMessage));
       }
 
       if (!data || typeof data !== "object" || !("result" in data)) {

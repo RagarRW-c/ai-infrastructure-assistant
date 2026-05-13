@@ -10,6 +10,7 @@ AI Infrastructure Assistant is a small full-stack app for generating infrastruct
 - Configurable GCP project, region, Vertex model, CORS origins, and prompt length via environment variables.
 - `/health` endpoint for Cloud Run, Kubernetes, or load-balancer probes.
 - Generated output validation for Kubernetes YAML, Terraform, and Dockerfile snippets.
+- Generate endpoint rate limiting to reduce accidental or abusive model usage.
 - Backend tests with FastAPI `TestClient` and mocked generation.
 - Local Docker Compose setup.
 
@@ -37,6 +38,8 @@ cp .env.example .env
 | `VERTEX_MODEL` | Backend | `gemini-2.5-flash` | Generative model name. |
 | `CORS_ORIGINS` | Backend | `http://localhost:3000,https://ai-infra-frontend-41844796013.europe-central2.run.app` | Comma-separated allowed frontend origins. Use exact origins in production. |
 | `MAX_PROMPT_LENGTH` | Backend | `4000` | Maximum accepted prompt length. |
+| `RATE_LIMIT_REQUESTS` | Backend | `10` | Maximum `/generate` requests allowed per client IP in the rate limit window. Use `0` to disable. |
+| `RATE_LIMIT_WINDOW_SECONDS` | Backend | `60` | Rate limit window length in seconds. Use `0` to disable. |
 | `NEXT_PUBLIC_API_URL` | Frontend | `https://ai-infra-backend-41844796013.europe-central2.run.app` in production code, `http://localhost:8080` in `.env.example` | Public backend URL inlined into the browser bundle at build time. |
 
 > `NEXT_PUBLIC_API_URL` is a browser-visible build-time value. The production fallback points to `https://ai-infra-backend-41844796013.europe-central2.run.app` so a deployed frontend does not call `localhost`. For local development, set it to `http://localhost:8080`.
@@ -119,7 +122,7 @@ Response body:
 
 `validation.status` can be `passed`, `warning`, or `failed`. Backend validation performs built-in checks for Kubernetes YAML structure and common container risks, Terraform syntax/secret heuristics plus `terraform fmt -check` when Terraform is installed, and Dockerfile structure/best-practice checks plus `hadolint` when available.
 
-Request validation errors return HTTP `422`. Model or backend failures return proper non-2xx HTTP errors instead of embedding error text in the `result` field.
+Request validation errors return HTTP `422`. Rate-limited clients receive HTTP `429` with a `Retry-After` header. Model or backend failures return proper non-2xx HTTP errors instead of embedding error text in the `result` field.
 
 ## Testing and checks
 
@@ -144,6 +147,7 @@ npm run build
 - The GitHub Actions frontend deployment sets `NEXT_PUBLIC_API_URL` during the Cloud Run source build, because Next.js inlines `NEXT_PUBLIC_` values into the browser bundle.
 - The GitHub Actions backend deployment sets `CORS_ORIGINS` to `https://ai-infra-frontend-41844796013.europe-central2.run.app` so the deployed frontend can call the API.
 - Set exact `CORS_ORIGINS`; avoid `*` for authenticated deployments.
+- Tune `RATE_LIMIT_REQUESTS` and `RATE_LIMIT_WINDOW_SECONDS` for expected traffic and Vertex AI budget protection.
 - Treat built-in validation as a first-pass safety check; still validate generated infrastructure code with your normal tools before deployment, for example `kubectl --dry-run`, `terraform validate`, `tflint`, `checkov`, and Dockerfile linters.
 - Do not hardcode secrets in prompts or generated code.
 - Ensure Vertex AI credentials are provided through workload identity, service account credentials, or the platform-native identity mechanism.
