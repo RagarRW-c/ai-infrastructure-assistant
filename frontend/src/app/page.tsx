@@ -12,6 +12,14 @@ type ValidationResult = {
   messages: string[];
 };
 
+type ExamplePrompt = {
+  title: string;
+  description: string;
+  prompt: string;
+  type: InfraType;
+  cloud: CloudProvider;
+};
+
 const DEFAULT_API_BASE_URL = "https://ai-infra-backend-41844796013.europe-central2.run.app";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE_URL;
 const MAX_PROMPT_LENGTH = 4000;
@@ -34,6 +42,50 @@ const placeholders: Record<InfraType, string> = {
   terraform: "Create Terraform for a secure GCP Cloud Run service",
   dockerfile: "Create a secure multi-stage Dockerfile for a Next.js application",
 };
+
+const downloadFileNames: Record<InfraType, string> = {
+  kubernetes: "kubernetes.yaml",
+  terraform: "main.tf",
+  dockerfile: "Dockerfile",
+};
+
+const emptyEditorText = `# Your generated infrastructure code will appear here.
+# Pick an example or describe what you need, then press Ctrl+Enter or Cmd+Enter to generate.`;
+
+const examplePrompts: ExamplePrompt[] = [
+  {
+    title: "AWS VPC",
+    description: "Terraform network baseline",
+    type: "terraform",
+    cloud: "aws",
+    prompt:
+      "Create a production-ready AWS VPC with public and private subnets across two availability zones, NAT gateway, route tables, and least-privilege security groups.",
+  },
+  {
+    title: "GKE workload",
+    description: "Kubernetes app manifests",
+    type: "kubernetes",
+    cloud: "gcp",
+    prompt:
+      "Create Kubernetes manifests for a Node.js web application on GKE with Deployment, Service, resource requests and limits, readiness and liveness probes, and secure defaults.",
+  },
+  {
+    title: "FastAPI image",
+    description: "Secure Dockerfile",
+    type: "dockerfile",
+    cloud: "aws",
+    prompt:
+      "Create a secure production Dockerfile for a Python FastAPI application using a slim base image, dependency caching, non-root user, and uvicorn startup command.",
+  },
+  {
+    title: "Cloud Run service",
+    description: "Terraform deployment",
+    type: "terraform",
+    cloud: "gcp",
+    prompt:
+      "Create Terraform for a Google Cloud Run service with Artifact Registry, service account, least-privilege IAM, environment variables, and secure production defaults.",
+  },
+];
 
 const validationStyles: Record<ValidationStatus, { label: string; className: string }> = {
   passed: {
@@ -81,6 +133,7 @@ export default function Home() {
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [validation, setValidation] = useState<ValidationResult | null>(null);
+  const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [type, setType] = useState<InfraType>("kubernetes");
   const [cloud, setCloud] = useState<CloudProvider>("gcp");
@@ -91,7 +144,47 @@ export default function Home() {
   );
 
   const isPromptValid = prompt.trim().length > 0 && prompt.length <= MAX_PROMPT_LENGTH;
-  const copyLabel = `Copy ${selectedInfra.label}`;
+  const copyLabel = copied ? "Copied!" : `Copy ${selectedInfra.label}`;
+  const downloadFileName = downloadFileNames[type];
+
+  function applyExample(example: ExamplePrompt) {
+    setType(example.type);
+    setCloud(example.cloud);
+    setPrompt(example.prompt);
+    setError("");
+    setValidation(null);
+    setCopied(false);
+  }
+
+  async function copyResult() {
+    if (!result) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(result);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Could not copy the generated code to clipboard.");
+    }
+  }
+
+  function downloadResult() {
+    if (!result) {
+      return;
+    }
+
+    const blob = new Blob([result], {
+      type: "text/plain",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = downloadFileName;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  }
 
   async function generate() {
     if (!isPromptValid || loading) {
@@ -101,6 +194,7 @@ export default function Home() {
     setLoading(true);
     setError("");
     setValidation(null);
+    setCopied(false);
 
     try {
       const response = await fetch(`${API_BASE_URL}/generate`, {
@@ -157,6 +251,23 @@ export default function Home() {
           </p>
         </div>
 
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+          {examplePrompts.map((example) => (
+            <button
+              key={example.title}
+              type="button"
+              onClick={() => applyExample(example)}
+              className="rounded-2xl border border-gray-800 bg-gray-950 p-4 text-left transition hover:border-blue-500 hover:bg-gray-900"
+            >
+              <div className="text-sm font-semibold text-blue-300">{example.title}</div>
+              <div className="mt-1 text-sm text-gray-300">{example.description}</div>
+              <div className="mt-3 text-xs uppercase tracking-wide text-gray-500">
+                {example.cloud} · {example.type}
+              </div>
+            </button>
+          ))}
+        </div>
+
         <div className="rounded-2xl border border-gray-800 bg-gray-950 p-5 shadow-2xl">
           <div className="mb-5 grid gap-4 md:grid-cols-2">
             <div>
@@ -206,6 +317,12 @@ export default function Home() {
             placeholder={placeholders[type]}
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
+            onKeyDown={(event) => {
+              if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                event.preventDefault();
+                void generate();
+              }
+            }}
           />
           <div className="mt-2 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-400">
             <span>{prompt.length}/{MAX_PROMPT_LENGTH} characters</span>
@@ -218,14 +335,17 @@ export default function Home() {
             </div>
           ) : null}
 
-          <button
-            type="button"
-            onClick={generate}
-            disabled={!isPromptValid || loading}
-            className="mt-4 rounded bg-blue-600 px-6 py-3 font-semibold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-gray-600"
-          >
-            {loading ? "Generating..." : "Generate"}
-          </button>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={generate}
+              disabled={!isPromptValid || loading}
+              className="rounded bg-blue-600 px-6 py-3 font-semibold transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-gray-600"
+            >
+              {loading ? "Generating..." : "Generate"}
+            </button>
+            <span className="text-sm text-gray-400">Shortcut: Ctrl+Enter or Cmd+Enter</span>
+          </div>
         </div>
 
         {validation ? (
@@ -251,7 +371,7 @@ export default function Home() {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => navigator.clipboard.writeText(result)}
+                onClick={copyResult}
                 disabled={!result}
                 className="rounded bg-green-600 px-4 py-2 transition hover:bg-green-500 disabled:cursor-not-allowed disabled:bg-gray-600"
               >
@@ -260,21 +380,11 @@ export default function Home() {
 
               <button
                 type="button"
-                onClick={() => {
-                  const blob = new Blob([result], {
-                    type: "text/plain",
-                  });
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `${type}.txt`;
-                  a.click();
-                  window.URL.revokeObjectURL(url);
-                }}
+                onClick={downloadResult}
                 disabled={!result}
                 className="rounded bg-purple-600 px-4 py-2 transition hover:bg-purple-500 disabled:cursor-not-allowed disabled:bg-gray-600"
               >
-                Download
+                Download {downloadFileName}
               </button>
             </div>
           </div>
@@ -283,7 +393,7 @@ export default function Home() {
             height="600px"
             language={selectedInfra.language}
             theme="vs-dark"
-            value={result || "// Generated code will appear here"}
+            value={result || emptyEditorText}
             options={{
               minimap: {
                 enabled: false,

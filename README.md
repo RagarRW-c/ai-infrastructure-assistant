@@ -13,6 +13,7 @@ AI Infrastructure Assistant is a small full-stack app for generating infrastruct
 - Generate endpoint rate limiting to reduce accidental or abusive model usage.
 - Backend tests with FastAPI `TestClient` and mocked generation.
 - GitHub Actions CI for backend tests/compile checks and frontend lint/build checks.
+- Frontend UX helpers including example prompts, copy feedback, keyboard generation shortcut, and type-aware downloads.
 - Local Docker Compose setup.
 
 ## Project structure
